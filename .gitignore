@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Environment — secrets never committed (Hard rule 4)
+.env
+.env.*
+!.env.example
+
+# Build output
+backend/dist/
+frontend/dist/
+
+# SQLite database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
+
+# Prisma generated client
+backend/src/generated/
+
+# Exports (generated Obsidian markdown — runtime output)
+exports/
+
+# Logs
+*.log
+logs/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
