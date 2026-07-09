@@ -1,0 +1,117 @@
+// HorizonX Agentic OS — data model (spec §4)
+// SQLite does not support Prisma enums, so constrained values (churnRisk, tier,
+// status, decision, actor) are String/Int columns validated in application code.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Cached client list from the platform Reports API — one row per organization.
+model ClientCache {
+  id             Int      @id @default(autoincrement())
+  organizationId String   @unique
+  name           String
+  plan           String
+  lastSyncedAt   DateTime
+  rawSnapshot    String // raw JSON snapshot as returned by the Reports API
+
+  @@map("clients_cache")
+}
+
+// The learned intelligence layer — one profile per client, improved nightly.
+model ClientProfile {
+  id                 Int      @id @default(autoincrement())
+  organizationId     String   @unique
+  preferencesMd      String   @default("")
+  revisionPatternsMd String   @default("")
+  churnRisk          String   @default("low") // low | medium | high
+  updatedAt          DateTime @updatedAt
+
+  @@map("client_profiles")
+}
+
+// Daily overview snapshots from GET /api/reports/overview.
+model MetricsSnapshot {
+  id              Int      @id @default(autoincrement())
+  date            DateTime
+  rawOverview     String // raw overview JSON
+  activeClients   Int?
+  tasksStuck      Int?
+  creditsDeducted Int?
+  parsedNumbers   String? // full parsed key-numbers JSON (extensible)
+
+  @@map("metrics_snapshots")
+}
+
+// AI-generated proposals awaiting Abdulla's decision (Hard rule 2).
+model Proposal {
+  id                 String      @id @default(cuid())
+  createdAt          DateTime    @default(now())
+  tier               Int // 1 | 2 | 3 — enforced in code (Hard rule 3)
+  status             String      @default("pending") // pending | approved | rejected | executed | failed | expired
+  titleAr            String
+  bodyAr             String
+  evidenceJson       String // the data that justified the proposal
+  proposedActionJson String // action_type + n8n webhook payload, from the allowed catalog only (§6)
+  organizationId     String?
+  approval           Approval?
+  execution          Execution?
+
+  @@map("proposals")
+}
+
+// Abdulla's explicit decision on a proposal — required before any execution.
+model Approval {
+  id         Int      @id @default(autoincrement())
+  proposalId String   @unique
+  decidedAt  DateTime @default(now())
+  decision   String // approved | rejected
+  noteAr     String?
+  proposal   Proposal @relation(fields: [proposalId], references: [id])
+
+  @@map("approvals")
+}
+
+// Webhook executions — proposalId is unique so a proposal fires at most once (Hard rule 7).
+model Execution {
+  id                 Int      @id @default(autoincrement())
+  proposalId         String   @unique
+  firedAt            DateTime @default(now())
+  n8nWebhook         String
+  requestPayloadHash String
+  responseStatus     Int?
+  responseBody       String?
+  proposal           Proposal @relation(fields: [proposalId], references: [id])
+
+  @@map("executions")
+}
+
+// Append-only decision log — never updated or deleted (application-enforced).
+model DecisionLog {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  tier      Int
+  actor     String // system | abdulla
+  summaryAr String
+  refs      String? // JSON references to proposals/executions/snapshots
+
+  @@map("decision_log")
+}
+
+// Every Claude API call, for cost tracking and the monthly budget guard (Hard rule 5).
+model AiUsage {
+  id               Int      @id @default(autoincrement())
+  timestamp        DateTime @default(now())
+  purpose          String
+  model            String
+  inputTokens      Int
+  outputTokens     Int
+  estimatedCostUsd Float
+
+  @@map("ai_usage")
+}
