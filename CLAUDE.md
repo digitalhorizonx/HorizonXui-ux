@@ -4,7 +4,7 @@
 
 ## 1. Mission
 
-You are building the **HorizonX Agentic OS** — a personal operations system for Abdulla, CEO of HorizonX. It will be deployed at `claude.horizonx.site`. It is a SEPARATE application from the HorizonX platform. It never modifies the platform.
+You are building the **HorizonX Agentic OS** — a personal operations system for Abdulla, CEO of HorizonX. It will be deployed at `cs.horizonx.site`. It is a SEPARATE application from the HorizonX platform. It never modifies the platform.
 
 The loop it implements:
 
@@ -41,7 +41,7 @@ Concretely, the system:
 - Frontend: React + TypeScript + Vite + Tailwind CSS, RTL-first, Arabic fonts (IBM Plex Sans Arabic or Cairo)
 - Scheduler: node-cron inside the backend process (no external queue — keep it simple)
 - AI: Anthropic API, model `claude-sonnet-4-6`, structured JSON outputs
-- Deployment target: single VPS process behind Nginx at `claude.horizonx.site` (produce a deployment runbook; do not claim it is live until verified)
+- Deployment target: single VPS process behind Nginx at `cs.horizonx.site` (produce a deployment runbook; do not claim it is live until verified)
 
 ## 4. Data model (Prisma, SQLite)
 
@@ -119,8 +119,8 @@ Expanding this catalog is itself a Tier 2 decision — new action types require 
 
 ## Build status (updated by Claude Code at each gate)
 
-- [x] Phase 0 — skeleton scaffolded (backend + frontend + Prisma schema + .env.example). **Awaiting Abdulla's approval + prerequisite answers (platform base URL, Reports API confirmation).**
-- [ ] Phase 1 — data ingestion
+- [x] Phase 0 — skeleton scaffolded and approved by Abdulla (2026-07-09). Deployment target changed by Abdulla from claude.horizonx.site to **cs.horizonx.site**.
+- [x] Phase 1 — data ingestion built and verified against a local stub of the Reports API contract. **The real platform Reports API does not exist yet** (horizonx.site answers /api/reports/overview with the SPA's HTML) — the real-sync demo is blocked until it is built in the platform repo. Deployment runbook: docs/runbook-deploy-cs.md.
 - [ ] Phase 2 — client intelligence profiles
 - [ ] Phase 3 — proposal engine
 - [ ] Phase 4 — execution layer

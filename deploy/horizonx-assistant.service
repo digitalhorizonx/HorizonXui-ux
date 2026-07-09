@@ -1,0 +1,25 @@
+# systemd unit for the HorizonX Agentic OS backend
+# Install: copy to /etc/systemd/system/horizonx-assistant.service
+#          systemctl daemon-reload && systemctl enable --now horizonx-assistant
+
+[Unit]
+Description=HorizonX Agentic OS backend (cs.horizonx.site)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/horizonx-assistant/backend
+EnvironmentFile=/opt/horizonx-assistant/backend/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/horizonx-assistant/backend/prisma/data /opt/horizonx-assistant/exports
+
+[Install]
+WantedBy=multi-user.target
