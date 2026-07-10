@@ -2,13 +2,17 @@ import { Router } from 'express';
 import { prisma } from '../db';
 import { requireAuth } from '../middleware/requireAuth';
 import { runOverviewSync, getSyncStatus } from '../services/syncService';
+import { getAiBudgetStatus } from '../services/aiClient';
+import { clientsRouter } from './clients';
 
 export const apiRouter = Router();
 apiRouter.use(requireAuth);
+apiRouter.use('/clients', clientsRouter);
 
-/** Sync health — the frontend renders lastError as a banner (never silent). */
+/** Sync + AI-budget health — the frontend renders both as banners (never silent). */
 apiRouter.get('/status', async (_req, res) => {
-  res.json(await getSyncStatus());
+  const [sync, aiBudget] = await Promise.all([getSyncStatus(), getAiBudgetStatus()]);
+  res.json({ ...sync, aiBudget });
 });
 
 /** Yesterday-vs-today key numbers for the dashboard. */

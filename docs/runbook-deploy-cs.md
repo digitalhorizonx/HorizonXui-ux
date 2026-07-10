@@ -154,3 +154,20 @@ intelligence profiles) needs a per-client endpoint added in the platform repo.
 ```bash
 cd /opt/horizonx-assistant && sudo bash deploy/deploy.sh
 ```
+
+### Phase 2 (client intelligence) — one-time additions
+
+Before or after running deploy.sh for the Phase 2 update:
+
+```bash
+nano /opt/horizonx-assistant/backend/.env
+# set: ANTHROPIC_API_KEY=sk-ant-...      (from console.anthropic.com)
+# optionally adjust: AI_BUDGET_USD=10    (monthly cap; calls stop + banner when exceeded)
+systemctl restart horizonx-assistant
+```
+
+Phase 2's nightly jobs (03:00 profile updates, 03:30 export) only produce real
+profiles once the platform exposes per-client data:
+`GET /api/agent-reports/clients` (list) and
+`GET /api/agent-reports/clients/:organizationId/context` (history/revisions).
+Until then the clients page shows an explanatory empty state.

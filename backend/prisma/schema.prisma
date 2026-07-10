@@ -30,9 +30,21 @@ model ClientProfile {
   preferencesMd      String   @default("")
   revisionPatternsMd String   @default("")
   churnRisk          String   @default("low") // low | medium | high
+  churnRiskReasonAr  String   @default("") // the reason shown in the UI (spec Phase 2.2)
   updatedAt          DateTime @updatedAt
 
   @@map("client_profiles")
+}
+
+// Every profile change (AI or Abdulla), stored as a diff (spec Phase 2.1 "Diff stored").
+model ProfileUpdate {
+  id             Int      @id @default(autoincrement())
+  organizationId String
+  createdAt      DateTime @default(now())
+  source         String // ai | abdulla
+  diffJson       String // { field: { before, after } } for each changed field
+
+  @@map("profile_updates")
 }
 
 // Daily overview snapshots from GET /api/reports/overview.

@@ -32,7 +32,7 @@ function MetricCard({
   );
 }
 
-export default function Dashboard({ onLogout }: { onLogout: () => void }) {
+export default function Dashboard() {
   const [summary, setSummary] = useState<MetricsSummary | null>(null);
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -65,29 +65,22 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
     }
   }
 
-  async function logout() {
-    await api('/api/auth/logout', { method: 'POST' });
-    onLogout();
-  }
-
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <h1 className="text-xl font-bold text-slate-900">نظام هورايزن إكس — لوحة المؤشرات</h1>
-          <button onClick={() => void logout()} className="text-sm text-slate-500 hover:text-slate-800">
-            تسجيل الخروج
-          </button>
+    <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
+      {status?.lastError && (
+        <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-red-800">
+          <strong>تنبيه:</strong> {status.lastError.summaryAr}
+          <span className="mr-2 text-sm text-red-600">({fmtDate(status.lastError.at)})</span>
         </div>
-      </header>
+      )}
 
-      <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
-        {status?.lastError && (
-          <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-red-800">
-            <strong>تنبيه:</strong> {status.lastError.summaryAr}
-            <span className="mr-2 text-sm text-red-600">({fmtDate(status.lastError.at)})</span>
-          </div>
-        )}
+      {status?.aiBudget?.exceeded && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
+          <strong>تنبيه:</strong> تم تجاوز ميزانية الذكاء الاصطناعي الشهرية ($
+          {status.aiBudget.spentUsd.toFixed(2)} من ${status.aiBudget.budgetUsd}) — توقفت استدعاءات
+          الذكاء الاصطناعي حتى بداية الشهر القادم.
+        </div>
+      )}
 
         <div className="flex items-center justify-between">
           <p className="text-sm text-slate-500">آخر مزامنة ناجحة: {fmtDate(status?.lastSnapshotAt)}</p>
@@ -145,7 +138,6 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
             </ul>
           )}
         </section>
-      </div>
-    </main>
+    </div>
   );
 }

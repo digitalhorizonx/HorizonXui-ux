@@ -36,6 +36,36 @@ export type MetricsSummary = { today: SnapshotNumbers; yesterday: SnapshotNumber
 export type SyncStatus = {
   lastSnapshotAt: string | null;
   lastError: { at: string; summaryAr: string } | null;
+  aiBudget?: { spentUsd: number; budgetUsd: number; exceeded: boolean };
+};
+
+export type ClientListItem = {
+  organizationId: string;
+  name: string;
+  plan: string;
+  lastSyncedAt: string;
+  churnRisk: 'low' | 'medium' | 'high';
+};
+
+export type ClientDetail = {
+  organizationId: string;
+  name: string;
+  plan: string;
+  lastSyncedAt: string;
+  profile: {
+    preferencesMd: string;
+    revisionPatternsMd: string;
+    churnRisk: 'low' | 'medium' | 'high';
+    churnRiskReasonAr: string;
+    updatedAt: string | null;
+  };
+  history: unknown;
+  updates: {
+    id: number;
+    createdAt: string;
+    source: 'ai' | 'abdulla';
+    diff: Record<string, { before: string; after: string }>;
+  }[];
 };
 
 export type LogEntry = {
