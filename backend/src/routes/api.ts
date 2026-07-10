@@ -23,13 +23,22 @@ apiRouter.get('/metrics/summary', async (_req, res) => {
       orderBy: { date: 'desc' },
     });
   }
-  const shape = (s: typeof latest) =>
-    s && {
+  const shape = (s: typeof latest) => {
+    if (!s) return null;
+    let extras: Record<string, unknown> = {};
+    try {
+      extras = s.parsedNumbers ? (JSON.parse(s.parsedNumbers) as Record<string, unknown>) : {};
+    } catch {
+      // tolerate old/corrupt snapshots — base columns still render
+    }
+    return {
+      ...extras,
       date: s.date,
       activeClients: s.activeClients,
       tasksStuck: s.tasksStuck,
       creditsDeducted: s.creditsDeducted,
     };
+  };
   res.json({ today: shape(latest), yesterday: shape(previous) });
 });
 

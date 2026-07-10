@@ -120,7 +120,7 @@ Expanding this catalog is itself a Tier 2 decision — new action types require 
 ## Build status (updated by Claude Code at each gate)
 
 - [x] Phase 0 — skeleton scaffolded and approved by Abdulla (2026-07-09). Deployment target changed by Abdulla from claude.horizonx.site to **cs.horizonx.site**.
-- [x] Phase 1 — data ingestion built and verified against a local stub of the Reports API contract. **The real platform Reports API does not exist yet** (horizonx.site answers /api/reports/overview with the SPA's HTML) — the real-sync demo is blocked until it is built in the platform repo. Deployment runbook: docs/runbook-deploy-cs.md.
+- [x] Phase 1 — data ingestion built; **real sync verified 2026-07-10** against the live Agent Reports API (`https://claude.horizonx.site/api/agent-reports/overview`, `X-Report-Key`). Note: real paths are `/api/agent-reports/*`, not the spec's `/api/reports/*`. **Gap for Phase 2:** the overview carries only aggregate client health (no per-client list) and no per-client context endpoint exists — must be added in the platform repo before client intelligence profiles can work. Deployment runbook: docs/runbook-deploy-cs.md.
 - [ ] Phase 2 — client intelligence profiles
 - [ ] Phase 3 — proposal engine
 - [ ] Phase 4 — execution layer

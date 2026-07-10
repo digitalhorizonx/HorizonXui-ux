@@ -53,9 +53,9 @@ node -e "require('bcryptjs').hash(process.argv[1], 12).then(console.log)" 'your-
 # generate the session secret:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-nano .env   # fill in: ADMIN_PASSWORD_HASH, SESSION_SECRET, PORT=3000
-            # PLATFORM_BASE_URL=https://horizonx.site and REPORT_API_KEY —
-            # only once the platform Reports API exists (see "Known limitation")
+nano .env   # fill in: ADMIN_PASSWORD_HASH, SESSION_SECRET, PORT=3000,
+            # PLATFORM_BASE_URL=https://claude.horizonx.site and REPORT_API_KEY
+            # (the Agent Reports API key — keep it only in this file on the VPS)
 ```
 
 ## 5. Build and migrate
@@ -96,15 +96,15 @@ curl https://cs.horizonx.site/healthz      # expect {"ok":true,"db":"up"}
 Then open `https://cs.horizonx.site` in a browser: the Arabic login page must
 appear; log in with your password; the dashboard must load.
 
-## Known limitation (as of 2026-07-09)
+## Platform API status (updated 2026-07-10)
 
-The platform Reports API (`GET /api/reports/overview` on horizonx.site) does
-**not exist yet** — the platform SPA answers that URL with HTML. Until it is
-built in the platform repo, leave `PLATFORM_BASE_URL`/`REPORT_API_KEY` empty:
-the app runs, login works, and the dashboard will show the sync-failure banner
-after scheduled syncs (that is the designed, non-silent behavior). Once the
-Reports API is live, fill in both variables and run
-`systemctl restart horizonx-assistant`.
+The Agent Reports API is **live**: `GET /api/agent-reports/overview` and
+`GET /api/agent-reports/health` on `https://claude.horizonx.site`, with the
+`X-Report-Key` header. A real sync was verified against it on 2026-07-10.
+
+Known gap: the overview has no per-client list and there is no per-client
+context endpoint yet, so `clients_cache` stays empty. Phase 2 (client
+intelligence profiles) needs a per-client endpoint added in the platform repo.
 
 ## Updates after the first deployment
 

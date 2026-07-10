@@ -60,13 +60,42 @@ async function logTier1(summaryAr: string, refs: Record<string, unknown>): Promi
   });
 }
 
-/** Daily overview sync: GET /api/reports/overview → metrics_snapshots + clients_cache. */
+/** Read a nested numeric value by path, e.g. section(raw, ['clients', 'active_client_orgs']). */
+function numberAt(raw: unknown, path: string[]): number | null {
+  let v: unknown = raw;
+  for (const key of path) {
+    if (!isRecord(v)) return null;
+    v = v[key];
+  }
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+/** Daily overview sync: GET /api/agent-reports/overview → metrics_snapshots + clients_cache. */
 export async function runOverviewSync(): Promise<SyncResult> {
   try {
     const raw = await reportsApi.overview();
-    const activeClients = pickNumber(raw, ['activeClients', 'active_clients', 'clientsActive']);
-    const tasksStuck = pickNumber(raw, ['tasksStuck', 'tasks_stuck', 'stuckTasks']);
-    const creditsDeducted = pickNumber(raw, ['creditsDeducted', 'credits_deducted', 'creditsUsed']);
+    // The live payload nests everything under `report` (verified 2026-07-10).
+    const root = isRecord(raw) && isRecord(raw['report']) ? raw['report'] : raw;
+
+    const activeClients =
+      numberAt(root, ['clients', 'active_client_orgs']) ??
+      pickNumber(root, ['activeClients', 'active_clients', 'clientsActive']);
+    const tasksStuck =
+      numberAt(root, ['workers', 'stuck_tasks_count']) ??
+      pickNumber(root, ['tasksStuck', 'tasks_stuck', 'stuckTasks']);
+    // The live Reports API has no credits concept — stays null until it does.
+    const creditsDeducted = pickNumber(root, ['creditsDeducted', 'credits_deducted', 'creditsUsed']);
+
+    const extras = {
+      tasksInProduction: numberAt(root, ['tasks', 'in_production']),
+      pendingClientApprovals: numberAt(root, ['approvals', 'pending_client_approvals_total']),
+      pendingMarketingPlanReviews: numberAt(root, ['approvals', 'pending_marketing_plan_reviews']),
+      staffTotal: numberAt(root, ['workers', 'staff_total']),
+      aiSpendUsd: numberAt(root, ['ai_spend_this_month', 'total_cost_usd']),
+      clientsHealthGreen: numberAt(root, ['clients', 'health', 'green']),
+      clientsHealthYellow: numberAt(root, ['clients', 'health', 'yellow']),
+      clientsHealthRed: numberAt(root, ['clients', 'health', 'red']),
+    };
 
     const snapshot = await prisma.metricsSnapshot.create({
       data: {
@@ -75,11 +104,13 @@ export async function runOverviewSync(): Promise<SyncResult> {
         activeClients,
         tasksStuck,
         creditsDeducted,
-        parsedNumbers: JSON.stringify({ activeClients, tasksStuck, creditsDeducted }),
+        parsedNumbers: JSON.stringify({ activeClients, tasksStuck, creditsDeducted, ...extras }),
       },
     });
 
-    const clients = extractClients(raw);
+    // The live overview has no per-client list yet (only aggregate health counts)
+    // — this stays empty until the platform adds one. Surfaced, not silent.
+    const clients = extractClients(root);
     for (const c of clients) {
       await prisma.clientCache.upsert({
         where: { organizationId: c.organizationId },

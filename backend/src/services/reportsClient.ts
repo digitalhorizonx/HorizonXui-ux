@@ -58,8 +58,11 @@ async function getJson(path: string): Promise<unknown> {
   throw lastError;
 }
 
+// Real platform endpoints (verified live 2026-07-10). The per-client context
+// endpoint from the original spec does not exist yet on the platform.
 export const reportsApi = {
-  overview: () => getJson('/api/reports/overview'),
+  overview: () => getJson('/api/agent-reports/overview'),
+  health: () => getJson('/api/agent-reports/health'),
   clientContext: (organizationId: string) =>
-    getJson(`/api/reports/clients/${encodeURIComponent(organizationId)}/context`),
+    getJson(`/api/agent-reports/clients/${encodeURIComponent(organizationId)}/context`),
 };

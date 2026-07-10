@@ -100,7 +100,7 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="العملاء النشطون"
             today={summary?.today?.activeClients}
@@ -112,11 +112,23 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
             yesterday={summary?.yesterday?.tasksStuck}
           />
           <MetricCard
-            title="الرصيد المخصوم"
-            today={summary?.today?.creditsDeducted}
-            yesterday={summary?.yesterday?.creditsDeducted}
+            title="المهام قيد الإنتاج"
+            today={summary?.today?.tasksInProduction}
+            yesterday={summary?.yesterday?.tasksInProduction}
+          />
+          <MetricCard
+            title="الموافقات المعلقة"
+            today={summary?.today?.pendingClientApprovals}
+            yesterday={summary?.yesterday?.pendingClientApprovals}
           />
         </div>
+
+        {summary?.today?.aiSpendUsd != null && (
+          <p className="text-sm text-slate-500">
+            إنفاق الذكاء الاصطناعي هذا الشهر (المنصة): ${summary.today.aiSpendUsd.toFixed(2)}
+            {summary.today.staffTotal != null && <span className="mr-4">فريق العمل: {summary.today.staffTotal}</span>}
+          </p>
+        )}
 
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 font-semibold text-slate-900">سجل القرارات الأخير</h2>

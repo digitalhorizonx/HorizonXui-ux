@@ -25,6 +25,10 @@ export type SnapshotNumbers = {
   activeClients: number | null;
   tasksStuck: number | null;
   creditsDeducted: number | null;
+  tasksInProduction?: number | null;
+  pendingClientApprovals?: number | null;
+  staffTotal?: number | null;
+  aiSpendUsd?: number | null;
 } | null;
 
 export type MetricsSummary = { today: SnapshotNumbers; yesterday: SnapshotNumbers };
