@@ -47,6 +47,41 @@ export type ClientListItem = {
   churnRisk: 'low' | 'medium' | 'high';
 };
 
+export type DecisionPackage = {
+  questionAr: string;
+  optionsAr: string[];
+  risksAr: string[];
+  recommendationAr: string;
+};
+
+export type ProposedAction = {
+  actionType: string;
+  payload: Record<string, string>;
+  decisionPackage?: DecisionPackage;
+};
+
+export type Proposal = {
+  id: string;
+  createdAt: string;
+  tier: 1 | 2 | 3;
+  status: 'pending' | 'approved' | 'rejected' | 'executed' | 'failed' | 'expired';
+  titleAr: string;
+  bodyAr: string;
+  evidence: { evidenceRefs: string[]; snapshotId: number };
+  proposedAction: ProposedAction;
+  organizationId: string | null;
+  approval: { decidedAt: string; decision: string } | null;
+};
+
+export type DailyBrief = {
+  date: string | null;
+  activeClients: number | null;
+  tasksStuck: number | null;
+  tasksInProduction: number | null;
+  pendingProposals: number;
+  summaryAr: string;
+};
+
 export type ClientDetail = {
   organizationId: string;
   name: string;

@@ -4,6 +4,8 @@ import LoginPage from './LoginPage';
 import Dashboard from './Dashboard';
 import ClientsPage from './ClientsPage';
 import ClientDetailPage from './ClientDetailPage';
+import ProposalsPage from './ProposalsPage';
+import DailyBriefPage from './DailyBriefPage';
 
 function useHashRoute(): string {
   const [hash, setHash] = useState(window.location.hash);
@@ -40,6 +42,10 @@ export default function App() {
     page = <ClientDetailPage orgId={decodeURIComponent(clientMatch[1] ?? '')} />;
   } else if (hash.startsWith('#/clients')) {
     page = <ClientsPage />;
+  } else if (hash.startsWith('#/proposals')) {
+    page = <ProposalsPage />;
+  } else if (hash.startsWith('#/brief')) {
+    page = <DailyBriefPage />;
   } else {
     page = <Dashboard />;
   }
@@ -59,8 +65,17 @@ export default function App() {
           <div className="flex items-center gap-6">
             <h1 className="text-lg font-bold text-slate-900">نظام هورايزن إكس</h1>
             <nav className="flex gap-4 text-sm">
-              <a href="#/" className={navCls(!hash.startsWith('#/clients'))}>
+              <a
+                href="#/"
+                className={navCls(!hash.startsWith('#/clients') && !hash.startsWith('#/proposals') && !hash.startsWith('#/brief'))}
+              >
                 لوحة المؤشرات
+              </a>
+              <a href="#/brief" className={navCls(hash.startsWith('#/brief'))}>
+                الملخص الصباحي
+              </a>
+              <a href="#/proposals" className={navCls(hash.startsWith('#/proposals'))}>
+                صندوق الموافقات
               </a>
               <a href="#/clients" className={navCls(hash.startsWith('#/clients'))}>
                 العملاء

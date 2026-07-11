@@ -4,10 +4,37 @@ import { requireAuth } from '../middleware/requireAuth';
 import { runOverviewSync, getSyncStatus } from '../services/syncService';
 import { getAiBudgetStatus } from '../services/aiClient';
 import { clientsRouter } from './clients';
+import { proposalsRouter } from './proposals';
 
 export const apiRouter = Router();
 apiRouter.use(requireAuth);
 apiRouter.use('/clients', clientsRouter);
+apiRouter.use('/proposals', proposalsRouter);
+
+/** Arabic morning brief: numbers, stuck items, proposal count (Phase 3.4). Templated, no AI cost. */
+apiRouter.get('/daily-brief', async (_req, res) => {
+  const latest = await prisma.metricsSnapshot.findFirst({ orderBy: { date: 'desc' } });
+  const pendingCount = await prisma.proposal.count({ where: { status: 'pending' } });
+  const parsed = latest?.parsedNumbers ? (JSON.parse(latest.parsedNumbers) as Record<string, unknown>) : {};
+  const activeClients = latest?.activeClients ?? null;
+  const tasksStuck = latest?.tasksStuck ?? null;
+  const tasksInProduction = typeof parsed.tasksInProduction === 'number' ? parsed.tasksInProduction : null;
+
+  const parts: string[] = [];
+  parts.push(activeClients != null ? `${activeClients} عميل نشط` : 'لا توجد بيانات عملاء بعد');
+  if (tasksStuck != null) parts.push(tasksStuck > 0 ? `${tasksStuck} مهمة متعثرة` : 'لا توجد مهام متعثرة');
+  if (tasksInProduction != null) parts.push(`${tasksInProduction} مهمة قيد الإنتاج`);
+  parts.push(pendingCount > 0 ? `${pendingCount} مقترح بانتظار قرارك` : 'لا توجد مقترحات معلقة');
+
+  res.json({
+    date: latest?.date ?? null,
+    activeClients,
+    tasksStuck,
+    tasksInProduction,
+    pendingProposals: pendingCount,
+    summaryAr: `صباح الخير — ${parts.join('، ')}.`,
+  });
+});
 
 /** Sync + AI-budget health — the frontend renders both as banners (never silent). */
 apiRouter.get('/status', async (_req, res) => {
