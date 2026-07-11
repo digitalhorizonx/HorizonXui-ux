@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db';
 import { runProposalEngine } from '../services/proposalEngine';
+import { fireProposalExecution } from '../services/executionService';
 
 export const proposalsRouter = Router();
 
@@ -16,7 +17,7 @@ proposalsRouter.get('/', async (req, res) => {
   const proposals = await prisma.proposal.findMany({
     where: status ? { status } : undefined,
     orderBy: { createdAt: 'desc' },
-    include: { approval: true, execution: true },
+    include: { approval: true, executions: { orderBy: { attemptNumber: 'desc' }, take: 1 } },
   });
   res.json(
     proposals.map((p) => ({
@@ -30,14 +31,20 @@ proposalsRouter.get('/', async (req, res) => {
       proposedAction: JSON.parse(p.proposedActionJson) as unknown,
       organizationId: p.organizationId,
       approval: p.approval ? { decidedAt: p.approval.decidedAt, decision: p.approval.decision } : null,
+      lastExecution: p.executions[0]
+        ? {
+            attemptNumber: p.executions[0].attemptNumber,
+            firedAt: p.executions[0].firedAt,
+            succeeded: p.executions[0].succeeded,
+            responseStatus: p.executions[0].responseStatus,
+            responseBody: p.executions[0].responseBody,
+          }
+        : null,
     }))
   );
 });
 
-/**
- * Approve or reject a proposal — Hard rule 2: this IS the approval record.
- * Execution (firing the n8n webhook) is Phase 4 and does not happen here yet.
- */
+/** Abdulla's explicit decision — Hard rule 2: this IS the approval record. */
 async function decide(proposalId: string, decision: 'approved' | 'rejected', noteAr?: string) {
   const proposal = await prisma.proposal.findUnique({ where: { id: proposalId }, include: { approval: true } });
   if (!proposal) return { ok: false as const, code: 404 };
@@ -68,7 +75,10 @@ proposalsRouter.post('/:id/approve', async (req, res) => {
       .json({ error: result.code === 404 ? 'not_found' : 'already_decided', messageAr: 'تعذر تنفيذ الطلب' });
     return;
   }
-  res.json({ ok: true });
+  // Fire immediately on approval (spec Phase 4.1). Never silent — the
+  // outcome (executed/failed) is returned and also visible in the inbox.
+  const execution = await fireProposalExecution(req.params.id);
+  res.json({ ok: true, execution });
 });
 
 proposalsRouter.post('/:id/reject', async (req, res) => {
@@ -81,4 +91,19 @@ proposalsRouter.post('/:id/reject', async (req, res) => {
     return;
   }
   res.json({ ok: true });
+});
+
+/** Retry a failed execution — new attempt row, still idempotent (Hard rule 7). */
+proposalsRouter.post('/:id/retry', async (req, res) => {
+  const proposal = await prisma.proposal.findUnique({ where: { id: req.params.id } });
+  if (!proposal) {
+    res.status(404).json({ error: 'not_found', messageAr: 'المقترح غير موجود' });
+    return;
+  }
+  if (proposal.status !== 'failed') {
+    res.status(409).json({ error: 'not_failed', messageAr: 'إعادة المحاولة متاحة فقط للمقترحات الفاشلة' });
+    return;
+  }
+  const execution = await fireProposalExecution(req.params.id);
+  res.json({ ok: true, execution });
 });

@@ -26,19 +26,48 @@ const TIER_BADGE: Record<number, string> = {
   3: 'bg-red-100 text-red-800',
 };
 
-function ProposalCard({ proposal, onDecided }: { proposal: Proposal; onDecided: () => void }) {
+function ProposalCard({
+  proposal,
+  variant,
+  onChanged,
+}: {
+  proposal: Proposal;
+  variant: 'pending' | 'failed';
+  onChanged: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
+  const [busy, setBusy] = useState<'approve' | 'reject' | 'retry' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<string | null>(null);
 
   async function decide(action: 'approve' | 'reject') {
     setBusy(action);
     setError(null);
     try {
-      await api(`/api/proposals/${proposal.id}/${action}`, { method: 'POST' });
-      onDecided();
+      const r = await api<{ execution?: { detail: string } }>(`/api/proposals/${proposal.id}/${action}`, {
+        method: 'POST',
+      });
+      if (r.execution) setOutcome(r.execution.detail);
+      onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.messageAr : 'حدث خطأ غير متوقع');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function retry() {
+    setBusy('retry');
+    setError(null);
+    try {
+      const r = await api<{ execution: { detail: string } }>(`/api/proposals/${proposal.id}/retry`, {
+        method: 'POST',
+      });
+      setOutcome(r.execution.detail);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.messageAr : 'حدث خطأ غير متوقع');
+    } finally {
       setBusy(null);
     }
   }
@@ -96,6 +125,16 @@ function ProposalCard({ proposal, onDecided }: { proposal: Proposal; onDecided: 
         </dl>
       )}
 
+      {variant === 'failed' && proposal.lastExecution && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <p>
+            <strong>فشلت المحاولة رقم {proposal.lastExecution.attemptNumber}</strong>
+            {proposal.lastExecution.responseStatus != null && ` (HTTP ${proposal.lastExecution.responseStatus})`}
+          </p>
+          {proposal.lastExecution.responseBody && <p className="mt-1 break-words">{proposal.lastExecution.responseBody}</p>}
+        </div>
+      )}
+
       <button onClick={() => setExpanded((e) => !e)} className="mb-3 text-sm text-blue-600 hover:underline">
         {expanded ? 'إخفاء الأدلة' : 'عرض الأدلة'}
       </button>
@@ -107,36 +146,52 @@ function ProposalCard({ proposal, onDecided }: { proposal: Proposal; onDecided: 
         </ul>
       )}
 
+      {outcome && <p className="mb-2 text-sm text-slate-600">{outcome}</p>}
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
 
-      <div className="flex gap-3">
+      {variant === 'pending' ? (
+        <div className="flex gap-3">
+          <button
+            disabled={busy !== null}
+            onClick={() => void decide('approve')}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {busy === 'approve' ? 'جارٍ…' : 'موافق'}
+          </button>
+          <button
+            disabled={busy !== null}
+            onClick={() => void decide('reject')}
+            className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+          >
+            {busy === 'reject' ? 'جارٍ…' : 'رفض'}
+          </button>
+        </div>
+      ) : (
         <button
           disabled={busy !== null}
-          onClick={() => void decide('approve')}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          onClick={() => void retry()}
+          className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
         >
-          {busy === 'approve' ? 'جارٍ…' : 'موافق'}
+          {busy === 'retry' ? 'جارٍ إعادة المحاولة…' : 'إعادة المحاولة'}
         </button>
-        <button
-          disabled={busy !== null}
-          onClick={() => void decide('reject')}
-          className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-        >
-          {busy === 'reject' ? 'جارٍ…' : 'رفض'}
-        </button>
-      </div>
+      )}
     </div>
   );
 }
 
 export default function ProposalsPage() {
-  const [proposals, setProposals] = useState<Proposal[] | null>(null);
+  const [pending, setPending] = useState<Proposal[] | null>(null);
+  const [failed, setFailed] = useState<Proposal[] | null>(null);
   const [running, setRunning] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const list = await api<Proposal[]>('/api/proposals?status=pending');
-    setProposals(list);
+    const [p, f] = await Promise.all([
+      api<Proposal[]>('/api/proposals?status=pending'),
+      api<Proposal[]>('/api/proposals?status=failed'),
+    ]);
+    setPending(p);
+    setFailed(f);
   }, []);
 
   useEffect(() => {
@@ -178,19 +233,31 @@ export default function ProposalsPage() {
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">{notice}</div>
       )}
 
-      {proposals === null ? (
-        <p className="text-slate-500">جارٍ التحميل…</p>
-      ) : proposals.length === 0 ? (
-        <p className="rounded-lg border border-slate-200 bg-white p-4 text-slate-500">
-          لا توجد مقترحات معلقة حالياً.
-        </p>
-      ) : (
-        <div className="space-y-4">
-          {proposals.map((p) => (
-            <ProposalCard key={p.id} proposal={p} onDecided={() => void load()} />
+      {failed !== null && failed.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="font-semibold text-red-700">فشل التنفيذ — بحاجة لإعادة محاولة</h3>
+          {failed.map((p) => (
+            <ProposalCard key={p.id} proposal={p} variant="failed" onChanged={() => void load()} />
           ))}
-        </div>
+        </section>
       )}
+
+      <section className="space-y-3">
+        {(failed?.length ?? 0) > 0 && <h3 className="font-semibold text-slate-900">بانتظار قرارك</h3>}
+        {pending === null ? (
+          <p className="text-slate-500">جارٍ التحميل…</p>
+        ) : pending.length === 0 ? (
+          <p className="rounded-lg border border-slate-200 bg-white p-4 text-slate-500">
+            لا توجد مقترحات معلقة حالياً.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {pending.map((p) => (
+              <ProposalCard key={p.id} proposal={p} variant="pending" onChanged={() => void load()} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

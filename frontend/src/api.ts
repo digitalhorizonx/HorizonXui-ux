@@ -60,6 +60,14 @@ export type ProposedAction = {
   decisionPackage?: DecisionPackage;
 };
 
+export type ExecutionAttempt = {
+  attemptNumber: number;
+  firedAt: string;
+  succeeded: boolean;
+  responseStatus: number | null;
+  responseBody: string | null;
+};
+
 export type Proposal = {
   id: string;
   createdAt: string;
@@ -71,6 +79,7 @@ export type Proposal = {
   proposedAction: ProposedAction;
   organizationId: string | null;
   approval: { decidedAt: string; decision: string } | null;
+  lastExecution: ExecutionAttempt | null;
 };
 
 export type DailyBrief = {

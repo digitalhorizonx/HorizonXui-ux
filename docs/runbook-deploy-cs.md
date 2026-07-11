@@ -171,3 +171,24 @@ profiles once the platform exposes per-client data:
 `GET /api/agent-reports/clients` (list) and
 `GET /api/agent-reports/clients/:organizationId/context` (history/revisions).
 Until then the clients page shows an explanatory empty state.
+
+### Phase 4 (execution layer) — one-time additions
+
+```bash
+nano /opt/horizonx-assistant/backend/.env
+# set: N8N_WEBHOOK_BASE=https://your-n8n-host/
+#      N8N_WEBHOOK_SECRET=<a random secret — generate with the same
+#        crypto.randomBytes command used for SESSION_SECRET>
+systemctl restart horizonx-assistant
+```
+
+Then in n8n: import both files from `n8n-workflows/` (see that folder's
+`README.md`), set the **same** `N8N_WEBHOOK_SECRET` as an n8n environment
+variable, replace the placeholder `NoOp` node in each with your real
+Telegram/reminder integration, and activate both workflows.
+
+Without this configured, approving a proposal that maps to a webhook (tiers 1
+and 2) will show a "failed" execution with a clear `N8N_WEBHOOK_BASE /
+N8N_WEBHOOK_SECRET غير مهيأ` message — never silent, and retriable once n8n is
+configured. Tier-3 strategic decisions execute immediately regardless (no
+webhook needed).

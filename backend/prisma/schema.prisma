@@ -72,7 +72,7 @@ model Proposal {
   proposedActionJson String // action_type + n8n webhook payload, from the allowed catalog only (§6)
   organizationId     String?
   approval           Approval?
-  execution          Execution?
+  executions         Execution[]
 
   @@map("proposals")
 }
@@ -89,15 +89,21 @@ model Approval {
   @@map("approvals")
 }
 
-// Webhook executions — proposalId is unique so a proposal fires at most once (Hard rule 7).
+// Webhook execution attempts. Idempotency (Hard rule 7) is NOT a DB unique
+// constraint here — a failed attempt must allow a retry, so proposalId is
+// not unique. Instead, execution service checks proposal.status before ever
+// firing: once a proposal reaches status "executed" it is never fired again.
+// Each row is one attempt; attemptNumber records the retry sequence.
 model Execution {
   id                 Int      @id @default(autoincrement())
-  proposalId         String   @unique
+  proposalId         String
+  attemptNumber      Int      @default(1)
   firedAt            DateTime @default(now())
   n8nWebhook         String
   requestPayloadHash String
   responseStatus     Int?
   responseBody       String?
+  succeeded          Boolean  @default(false)
   proposal           Proposal @relation(fields: [proposalId], references: [id])
 
   @@map("executions")
