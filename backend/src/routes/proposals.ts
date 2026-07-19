@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../db';
 import { runProposalEngine } from '../services/proposalEngine';
 import { fireProposalExecution } from '../services/executionService';
+import { exportProposalNote, exportClientProfile } from '../services/exportService';
 
 export const proposalsRouter = Router();
 
@@ -44,6 +45,16 @@ proposalsRouter.get('/', async (req, res) => {
   );
 });
 
+/** Refreshes a proposal's note and (if it's tied to a client) that client's note too. */
+async function refreshNotes(proposalId: string, organizationId: string | null) {
+  await exportProposalNote(proposalId);
+  if (organizationId) {
+    await exportClientProfile(organizationId).catch(() => {
+      // client may not be in cache (e.g. deleted) — proposal note already refreshed, not fatal
+    });
+  }
+}
+
 /** Abdulla's explicit decision — Hard rule 2: this IS the approval record. */
 async function decide(proposalId: string, decision: 'approved' | 'rejected', noteAr?: string) {
   const proposal = await prisma.proposal.findUnique({ where: { id: proposalId }, include: { approval: true } });
@@ -63,7 +74,7 @@ async function decide(proposalId: string, decision: 'approved' | 'rejected', not
       refs: JSON.stringify({ type: 'proposal_decision', proposalId, decision }),
     },
   });
-  return { ok: true as const };
+  return { ok: true as const, organizationId: proposal.organizationId };
 }
 
 proposalsRouter.post('/:id/approve', async (req, res) => {
@@ -78,6 +89,7 @@ proposalsRouter.post('/:id/approve', async (req, res) => {
   // Fire immediately on approval (spec Phase 4.1). Never silent — the
   // outcome (executed/failed) is returned and also visible in the inbox.
   const execution = await fireProposalExecution(req.params.id);
+  await refreshNotes(req.params.id, result.organizationId); // Obsidian brain stays live
   res.json({ ok: true, execution });
 });
 
@@ -90,6 +102,7 @@ proposalsRouter.post('/:id/reject', async (req, res) => {
       .json({ error: result.code === 404 ? 'not_found' : 'already_decided', messageAr: 'تعذر تنفيذ الطلب' });
     return;
   }
+  await refreshNotes(req.params.id, result.organizationId);
   res.json({ ok: true });
 });
 
@@ -105,5 +118,6 @@ proposalsRouter.post('/:id/retry', async (req, res) => {
     return;
   }
   const execution = await fireProposalExecution(req.params.id);
+  await refreshNotes(req.params.id, proposal.organizationId);
   res.json({ ok: true, execution });
 });

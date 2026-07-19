@@ -1,5 +1,6 @@
 import { prisma } from '../db';
 import { reportsApi } from './reportsClient';
+import { exportDailyNote } from './exportService';
 
 /**
  * Data ingestion (Phase 1 — "the eyes"). Failures are never silent: every
@@ -127,6 +128,7 @@ export async function runOverviewSync(): Promise<SyncResult> {
 
     const summaryAr = `تمت مزامنة النظرة العامة بنجاح (${clients.length} عميل)`;
     await logTier1(summaryAr, { type: 'overview_sync', snapshotId: snapshot.id, clients: clients.length });
+    await exportDailyNote(); // Obsidian brain: today's note exists the moment today's numbers do
     return { ok: true, summary: summaryAr, snapshotId: snapshot.id };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

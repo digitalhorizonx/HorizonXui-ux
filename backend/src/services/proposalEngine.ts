@@ -1,6 +1,7 @@
 import { prisma } from '../db';
 import { callClaudeJson, AiBudgetExceededError } from './aiClient';
 import { validateProposedAction, catalogTier, InvalidActionError, type ActionType } from './actionCatalog';
+import { exportProposalNote, exportDailyNote } from './exportService';
 
 /**
  * Proposal engine (Phase 3 — "the brain"). Runs after the morning sync:
@@ -200,7 +201,7 @@ export async function runProposalEngine(): Promise<{ ok: boolean; stored: number
       }
       const tier = catalogTier(action.actionType); // enforced in code, not trusted from the AI (Hard rule 3)
 
-      await prisma.proposal.create({
+      const created = await prisma.proposal.create({
         data: {
           tier,
           status: 'pending',
@@ -211,6 +212,7 @@ export async function runProposalEngine(): Promise<{ ok: boolean; stored: number
           organizationId: action.payload.organizationId ?? null,
         },
       });
+      await exportProposalNote(created.id); // Obsidian brain: note exists the moment the proposal does
       stored++;
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
@@ -229,5 +231,6 @@ export async function runProposalEngine(): Promise<{ ok: boolean; stored: number
     stored,
     rejected: rejections.length,
   });
+  await exportDailyNote(); // refresh today's Obsidian note with the new proposal links
   return { ok: true, stored, rejected: rejections.length };
 }
