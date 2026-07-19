@@ -95,3 +95,31 @@ export function validateProposedAction(raw: unknown): ProposedAction {
 export function catalogTier(actionType: ActionType): 1 | 2 | 3 {
   return ACTION_CATALOG[actionType].tier;
 }
+
+export type DecisionPackage = {
+  questionAr: string;
+  optionsAr: string[];
+  risksAr: string[];
+  recommendationAr: string;
+};
+
+/** Shared by the business proposal engine and the self-improvement engine —
+ * both produce strategic_decision_package proposals and must validate them
+ * identically. */
+export function validateDecisionPackage(dp: unknown): DecisionPackage {
+  if (!isRecord(dp)) throw new InvalidActionError('strategic_decision_package requires a decisionPackage object');
+  const { questionAr, optionsAr, risksAr, recommendationAr } = dp;
+  if (typeof questionAr !== 'string' || questionAr.length === 0) {
+    throw new InvalidActionError('decisionPackage.questionAr is required');
+  }
+  if (!Array.isArray(optionsAr) || optionsAr.length < 2 || !optionsAr.every((o) => typeof o === 'string')) {
+    throw new InvalidActionError('decisionPackage.optionsAr must have at least 2 string options');
+  }
+  if (!Array.isArray(risksAr) || !risksAr.every((r) => typeof r === 'string')) {
+    throw new InvalidActionError('decisionPackage.risksAr must be a string array');
+  }
+  if (typeof recommendationAr !== 'string' || recommendationAr.length === 0) {
+    throw new InvalidActionError('decisionPackage.recommendationAr is required');
+  }
+  return { questionAr, optionsAr, risksAr, recommendationAr };
+}

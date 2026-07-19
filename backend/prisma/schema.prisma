@@ -47,6 +47,18 @@ model ProfileUpdate {
   @@map("profile_updates")
 }
 
+// Singleton (single-user app — always the first row): a living Arabic
+// description of Abdulla's decision-making patterns, learned from his
+// approve/reject history and fed back into future proposal generation.
+// Same "his edits always win" rule as ClientProfile.
+model ManagerProfile {
+  id         Int      @id @default(autoincrement())
+  patternsMd String   @default("")
+  updatedAt  DateTime @updatedAt
+
+  @@map("manager_profile")
+}
+
 // Daily overview snapshots from GET /api/reports/overview.
 model MetricsSnapshot {
   id              Int      @id @default(autoincrement())

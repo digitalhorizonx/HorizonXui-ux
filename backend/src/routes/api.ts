@@ -5,11 +5,13 @@ import { runOverviewSync, getSyncStatus } from '../services/syncService';
 import { getAiBudgetStatus } from '../services/aiClient';
 import { clientsRouter } from './clients';
 import { proposalsRouter } from './proposals';
+import { managerProfileRouter } from './managerProfile';
 
 export const apiRouter = Router();
 apiRouter.use(requireAuth);
 apiRouter.use('/clients', clientsRouter);
 apiRouter.use('/proposals', proposalsRouter);
+apiRouter.use('/manager-profile', managerProfileRouter);
 
 /** Arabic morning brief: numbers, stuck items, proposal count (Phase 3.4). Templated, no AI cost. */
 apiRouter.get('/daily-brief', async (_req, res) => {

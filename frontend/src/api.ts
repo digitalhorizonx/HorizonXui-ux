@@ -75,7 +75,7 @@ export type Proposal = {
   status: 'pending' | 'approved' | 'rejected' | 'executed' | 'failed' | 'expired';
   titleAr: string;
   bodyAr: string;
-  evidence: { evidenceRefs: string[]; snapshotId: number };
+  evidence: { evidenceRefs: string[]; snapshotId?: number; source?: 'self_improvement' };
   proposedAction: ProposedAction;
   organizationId: string | null;
   approval: { decidedAt: string; decision: string } | null;
@@ -110,6 +110,11 @@ export type ClientDetail = {
     source: 'ai' | 'abdulla';
     diff: Record<string, { before: string; after: string }>;
   }[];
+};
+
+export type ManagerProfile = {
+  patternsMd: string;
+  updatedAt: string | null;
 };
 
 export type LogEntry = {

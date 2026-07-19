@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db';
 import { runProposalEngine } from '../services/proposalEngine';
+import { runSelfImprovementEngine } from '../services/selfImprovementEngine';
 import { fireProposalExecution } from '../services/executionService';
 import { exportProposalNote, exportClientProfile } from '../services/exportService';
 
@@ -9,6 +10,12 @@ export const proposalsRouter = Router();
 /** Manual proposal-engine trigger (Tier 1, informational — logged like every run). */
 proposalsRouter.post('/run', async (_req, res) => {
   const result = await runProposalEngine();
+  res.status(result.ok ? 200 : 502).json(result);
+});
+
+/** Manual self-improvement analysis trigger — produces Tier-3 proposals about the system itself. */
+proposalsRouter.post('/self-improve/run', async (_req, res) => {
+  const result = await runSelfImprovementEngine();
   res.status(result.ok ? 200 : 502).json(result);
 });
 

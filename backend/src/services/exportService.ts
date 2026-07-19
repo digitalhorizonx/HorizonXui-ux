@@ -16,6 +16,7 @@ const EXPORTS_ROOT = path.resolve(__dirname, '../../../exports');
 const CLIENTS_DIR = path.join(EXPORTS_ROOT, 'clients');
 const PROPOSALS_DIR = path.join(EXPORTS_ROOT, 'proposals');
 const DAILY_DIR = path.join(EXPORTS_ROOT, 'daily');
+const MANAGER_DIR = path.join(EXPORTS_ROOT, 'manager');
 
 function safeFileName(name: string): string {
   const cleaned = name.replace(/[/\\:*?"<>|]/g, '-').trim();
@@ -267,6 +268,28 @@ ${logLines}
 
   await fs.mkdir(DAILY_DIR, { recursive: true });
   const filePath = path.join(DAILY_DIR, `${key}.md`);
+  await fs.writeFile(filePath, markdown, 'utf8');
+  return { filePath };
+}
+
+/**
+ * Writes/refreshes the note describing how Abdulla makes decisions —
+ * learned from his approve/reject history (requested 2026-07-19).
+ */
+export async function exportManagerProfile(): Promise<{ filePath: string }> {
+  const profile = await prisma.managerProfile.findFirst();
+
+  const markdown = `---
+updated: ${new Date().toISOString()}
+---
+
+# نمط إدارة عبدالله
+
+${profile?.patternsMd || '_لا توجد بيانات كافية بعد — يتطلب عدداً من القرارات (موافقة/رفض) ليتعلم النمط منها._'}
+`;
+
+  await fs.mkdir(MANAGER_DIR, { recursive: true });
+  const filePath = path.join(MANAGER_DIR, 'نمط-إدارة-عبدالله.md');
   await fs.writeFile(filePath, markdown, 'utf8');
   return { filePath };
 }

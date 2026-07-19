@@ -81,6 +81,11 @@ function ProposalCard({
           المستوى {proposal.tier}
         </span>
         <span className="text-xs text-slate-500">{ACTION_LABEL[proposal.proposedAction.actionType] ?? proposal.proposedAction.actionType}</span>
+        {proposal.evidence.source === 'self_improvement' && (
+          <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
+            تحسين النظام
+          </span>
+        )}
       </div>
       <h3 className="mb-1 font-semibold text-slate-900">{proposal.titleAr}</h3>
       <p className="mb-3 text-sm text-slate-700">{proposal.bodyAr}</p>
@@ -182,7 +187,7 @@ function ProposalCard({
 export default function ProposalsPage() {
   const [pending, setPending] = useState<Proposal[] | null>(null);
   const [failed, setFailed] = useState<Proposal[] | null>(null);
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState<'engine' | 'self-improve' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -199,7 +204,7 @@ export default function ProposalsPage() {
   }, [load]);
 
   async function runEngine() {
-    setRunning(true);
+    setRunning('engine');
     setNotice(null);
     try {
       const r = await api<{ stored: number; rejected: number }>('/api/proposals/run', { method: 'POST' });
@@ -211,7 +216,27 @@ export default function ProposalsPage() {
     } catch (err) {
       setNotice(err instanceof ApiError ? err.messageAr : 'فشل تشغيل محرك المقترحات');
     } finally {
-      setRunning(false);
+      setRunning(null);
+      await load();
+    }
+  }
+
+  async function runSelfImprove() {
+    setRunning('self-improve');
+    setNotice(null);
+    try {
+      const r = await api<{ stored: number; rejected: number }>('/api/proposals/self-improve/run', {
+        method: 'POST',
+      });
+      setNotice(
+        r.stored > 0
+          ? `اقترح النظام ${r.stored} تحسيناً على نفسه للمراجعة${r.rejected > 0 ? ` (رُفض ${r.rejected} غير مطابق)` : ''}`
+          : 'لم يقترح تحليل تحسين النظام أي تغييرات هذه المرة'
+      );
+    } catch (err) {
+      setNotice(err instanceof ApiError ? err.messageAr : 'فشل تشغيل تحليل تحسين النظام');
+    } finally {
+      setRunning(null);
       await load();
     }
   }
@@ -220,13 +245,22 @@ export default function ProposalsPage() {
     <div className="mx-auto max-w-4xl space-y-4 px-6 py-8">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-900">صندوق الموافقات</h2>
-        <button
-          disabled={running}
-          onClick={() => void runEngine()}
-          className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-        >
-          {running ? 'جارٍ التشغيل…' : 'تشغيل محرك المقترحات الآن'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            disabled={running !== null}
+            onClick={() => void runEngine()}
+            className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+          >
+            {running === 'engine' ? 'جارٍ التشغيل…' : 'تشغيل محرك المقترحات الآن'}
+          </button>
+          <button
+            disabled={running !== null}
+            onClick={() => void runSelfImprove()}
+            className="rounded-lg border border-purple-600 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-50 disabled:opacity-50"
+          >
+            {running === 'self-improve' ? 'جارٍ التحليل…' : 'تحليل تحسين النظام الآن'}
+          </button>
+        </div>
       </div>
 
       {notice && (

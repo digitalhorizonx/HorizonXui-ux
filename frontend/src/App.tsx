@@ -6,6 +6,7 @@ import ClientsPage from './ClientsPage';
 import ClientDetailPage from './ClientDetailPage';
 import ProposalsPage from './ProposalsPage';
 import DailyBriefPage from './DailyBriefPage';
+import ManagerProfilePage from './ManagerProfilePage';
 
 function useHashRoute(): string {
   const [hash, setHash] = useState(window.location.hash);
@@ -46,6 +47,8 @@ export default function App() {
     page = <ProposalsPage />;
   } else if (hash.startsWith('#/brief')) {
     page = <DailyBriefPage />;
+  } else if (hash.startsWith('#/manager')) {
+    page = <ManagerProfilePage />;
   } else {
     page = <Dashboard />;
   }
@@ -67,7 +70,12 @@ export default function App() {
             <nav className="flex gap-4 text-sm">
               <a
                 href="#/"
-                className={navCls(!hash.startsWith('#/clients') && !hash.startsWith('#/proposals') && !hash.startsWith('#/brief'))}
+                className={navCls(
+                  !hash.startsWith('#/clients') &&
+                    !hash.startsWith('#/proposals') &&
+                    !hash.startsWith('#/brief') &&
+                    !hash.startsWith('#/manager')
+                )}
               >
                 لوحة المؤشرات
               </a>
@@ -79,6 +87,9 @@ export default function App() {
               </a>
               <a href="#/clients" className={navCls(hash.startsWith('#/clients'))}>
                 العملاء
+              </a>
+              <a href="#/manager" className={navCls(hash.startsWith('#/manager'))}>
+                نمط الإدارة
               </a>
             </nav>
           </div>

@@ -1,7 +1,15 @@
 import { prisma } from '../db';
 import { callClaudeJson, AiBudgetExceededError } from './aiClient';
-import { validateProposedAction, catalogTier, InvalidActionError, type ActionType } from './actionCatalog';
+import {
+  validateProposedAction,
+  validateDecisionPackage,
+  catalogTier,
+  InvalidActionError,
+  type ActionType,
+  type DecisionPackage,
+} from './actionCatalog';
 import { exportProposalNote, exportDailyNote } from './exportService';
+import { getManagerProfile } from './managerProfileService';
 
 /**
  * Proposal engine (Phase 3 — "the brain"). Runs after the morning sync:
@@ -20,13 +28,6 @@ const ALL_ACTION_TYPES: ActionType[] = [
   'propose_content_direction_change',
   'strategic_decision_package',
 ];
-
-type DecisionPackage = {
-  questionAr: string;
-  optionsAr: string[];
-  risksAr: string[];
-  recommendationAr: string;
-};
 
 type RawProposal = {
   actionType: string;
@@ -97,11 +98,8 @@ Rules:
 - Use strategic_decision_package only for genuinely strategic, high-stakes questions — it must include a decisionPackage with questionAr, at least 2 optionsAr, risksAr, and a recommendationAr.
 - Rank the array by business impact, most important first.
 - Return fewer than ${MAX_PROPOSALS_PER_DAY} proposals (or zero) if the evidence does not justify more.
-- All text is Arabic.`;
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
+- All text is Arabic.
+- The evidence includes managerPatterns: Abdulla's known decision-making patterns learned from his past approvals/rejections. Use it to avoid re-proposing things he consistently rejects for the same reason, and to prioritize the kinds of proposals he tends to approve. If managerPatterns is empty, ignore it.`;
 
 async function logTier1(summaryAr: string, refs: Record<string, unknown>): Promise<void> {
   await prisma.decisionLog.create({ data: { tier: 1, actor: 'system', summaryAr, refs: JSON.stringify(refs) } });
@@ -129,30 +127,15 @@ async function gatherEvidence() {
       revisionPatternsExcerpt: (p?.revisionPatternsMd ?? '').slice(0, 300),
     };
   });
+  const managerProfile = await getManagerProfile();
+
   return {
     todaySnapshotId: today?.id ?? null,
     todayParsed: today?.parsedNumbers ? JSON.parse(today.parsedNumbers) : null,
     yesterdayParsed: yesterday?.parsedNumbers ? JSON.parse(yesterday.parsedNumbers) : null,
     profileSummaries,
+    managerPatterns: managerProfile.patternsMd,
   };
-}
-
-function validateDecisionPackage(dp: unknown): DecisionPackage {
-  if (!isRecord(dp)) throw new InvalidActionError('strategic_decision_package requires a decisionPackage object');
-  const { questionAr, optionsAr, risksAr, recommendationAr } = dp;
-  if (typeof questionAr !== 'string' || questionAr.length === 0) {
-    throw new InvalidActionError('decisionPackage.questionAr is required');
-  }
-  if (!Array.isArray(optionsAr) || optionsAr.length < 2 || !optionsAr.every((o) => typeof o === 'string')) {
-    throw new InvalidActionError('decisionPackage.optionsAr must have at least 2 string options');
-  }
-  if (!Array.isArray(risksAr) || !risksAr.every((r) => typeof r === 'string')) {
-    throw new InvalidActionError('decisionPackage.risksAr must be a string array');
-  }
-  if (typeof recommendationAr !== 'string' || recommendationAr.length === 0) {
-    throw new InvalidActionError('decisionPackage.recommendationAr is required');
-  }
-  return { questionAr, optionsAr, risksAr, recommendationAr };
 }
 
 /** Runs the analysis, validates every candidate, stores only what passes. */
